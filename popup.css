@@ -1,0 +1,6 @@
+body { font-family: Arial, sans-serif; width: 250px; margin: 10px; }
+h2 { font-size: 18px; margin-bottom: 10px; }
+input { width: 140px; }
+button { margin-left: 5px; }
+ul { list-style: none; padding: 0; }
+li { margin: 5px 0; display: flex; justify-content: space-between; align-items: center; }
