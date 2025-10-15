@@ -49,46 +49,56 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Intercept notification creation
 // Unified message listener with defensive checks
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('Received message:', message); // Add this line for debugging
-
   if (message.type === 'show_notification') {
-    const options = message.options && typeof message.options === 'object' ? message.options : null;
-    const hasRequiredFields = options &&
-      typeof options.type === 'string' &&
-      typeof options.iconUrl === 'string' &&
-      typeof options.title === 'string' &&
-      typeof options.message === 'string' &&
-      options.type && options.iconUrl && options.title && options.message;
-
-    if (!options) {
-      console.error('Notification options missing or null. Full message:', message);
-      sendResponse({error: 'Notification options missing or null', details: message});
-      return;
-    }
-
-    if (isOnFocusTab) {
-      if (hasRequiredFields) {
-        cachedNotifications.push(options);
-        updateBadge();
-        sendResponse({cached: true});
-      } else {
-        console.error('Invalid notification options:', options, 'Full message:', message);
-        sendResponse({error: 'Invalid notification options', details: options});
+    chrome.storage.sync.get(['focusMode', 'focusZones'], (result) => {
+      const { focusMode, focusZones } = result;
+      // If focus mode is OFF, always show notification
+      if (!focusMode) {
+        chrome.notifications.create('', message.options, () => {
+          sendResponse({ shown: true });
+        });
+        return true; // Keep message channel open for async response
       }
-    } else {
-      if (hasRequiredFields) {
-        try {
-          chrome.notifications.create('', options);
-          sendResponse({shown: true});
-        } catch (e) {
-          console.error('Notification creation failed:', e, options);
-          sendResponse({error: 'Notification creation failed', details: e.toString()});
+      // If focus mode is ON, check focus zones logic as before
+      const options = message.options && typeof message.options === 'object' ? message.options : null;
+      const hasRequiredFields = options &&
+        typeof options.type === 'string' &&
+        typeof options.iconUrl === 'string' &&
+        typeof options.title === 'string' &&
+        typeof options.message === 'string' &&
+        options.type && options.iconUrl && options.title && options.message;
+
+      if (!options) {
+        console.error('Notification options missing or null. Full message:', message);
+        sendResponse({error: 'Notification options missing or null', details: message});
+        return;
+      }
+
+      if (isOnFocusTab) {
+        if (hasRequiredFields) {
+          cachedNotifications.push(options);
+          updateBadge();
+          sendResponse({cached: true});
+        } else {
+          console.error('Invalid notification options:', options, 'Full message:', message);
+          sendResponse({error: 'Invalid notification options', details: options});
         }
       } else {
-        console.error('Invalid notification options:', options, 'Full message:', message);
-        sendResponse({error: 'Invalid notification options', details: options});
+        if (hasRequiredFields) {
+          try {
+            chrome.notifications.create('', options);
+            sendResponse({shown: true});
+          } catch (e) {
+            console.error('Notification creation failed:', e, options);
+            sendResponse({error: 'Notification creation failed', details: e.toString()});
+          }
+        } else {
+          console.error('Invalid notification options:', options, 'Full message:', message);
+          sendResponse({error: 'Invalid notification options', details: options});
+        }
       }
-    }
+    });
+    return true; // Keep message channel open for async response
   } else if (message.type === 'get_cached_count') {
     sendResponse({ count: cachedNotifications.length });
   }
@@ -139,4 +149,12 @@ chrome.runtime.onInstalled.addListener(() => {
   heldNotifications = [];
   cachedNotifications = [];
   updateBadge();
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes.focusMode) {
+    if (changes.focusMode.newValue === false) {
+      releaseCachedNotifications();
+    }
+  }
 });

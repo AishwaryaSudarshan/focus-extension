@@ -2,6 +2,7 @@
 const siteInput = document.getElementById('siteInput');
 const addSiteBtn = document.getElementById('addSiteBtn');
 const siteList = document.getElementById('siteList');
+const toggleModeBtn = document.getElementById('toggleModeBtn');
 
 // Add a counter element to display cached notifications
 function updateCounter(count) {
@@ -101,3 +102,19 @@ document.getElementById('testNotify').addEventListener('click', () => {
     // }
   });
 });
+
+// Initialize toggle button state
+chrome.storage.sync.get(['focusMode'], result => {
+  const isOn = result.focusMode === true;
+  toggleModeBtn.textContent = isOn ? 'Turn Focus Mode OFF' : 'Turn Focus Mode ON';
+});
+
+// Toggle mode on button click
+toggleModeBtn.onclick = () => {
+  chrome.storage.sync.get(['focusMode'], result => {
+    const isOn = result.focusMode === true;
+    chrome.storage.sync.set({ focusMode: !isOn }, () => {
+      toggleModeBtn.textContent = !isOn ? 'Turn Focus Mode OFF' : 'Turn Focus Mode ON';
+    });
+  });
+};
