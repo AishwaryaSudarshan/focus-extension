@@ -86,16 +86,6 @@ addSiteBtn.onclick = () => {
   });
 };
 
-chrome.runtime.sendMessage({
-  type: 'show_notification',
-}, response => {
-  if (response.cached) {
-    console.log('Notification cached due to focus mode.');
-  } else if (response.shown) {
-    console.log('Notification shown immediately.');
-  }
-});
-
 document.getElementById('testNotify').addEventListener('click', () => {
   chrome.runtime.sendMessage({
     type: 'show_notification',

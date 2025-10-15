@@ -49,19 +49,34 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Intercept notification creation
 // Unified message listener with defensive checks
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log('Received message:', message); // Add this line for debugging
+
   if (message.type === 'show_notification') {
-    // Defensive: ensure message.options is a valid object
     const options = message.options && typeof message.options === 'object' ? message.options : null;
+    const hasRequiredFields = options &&
+      typeof options.type === 'string' &&
+      typeof options.iconUrl === 'string' &&
+      typeof options.title === 'string' &&
+      typeof options.message === 'string' &&
+      options.type && options.iconUrl && options.title && options.message;
+
+    if (!options) {
+      console.error('Notification options missing or null. Full message:', message);
+      sendResponse({error: 'Notification options missing or null', details: message});
+      return;
+    }
+
     if (isOnFocusTab) {
-      if (options && options.type && options.iconUrl && options.title && options.message) {
+      if (hasRequiredFields) {
         cachedNotifications.push(options);
         updateBadge();
         sendResponse({cached: true});
       } else {
-        sendResponse({error: 'Invalid notification options'});
+        console.error('Invalid notification options:', options, 'Full message:', message);
+        sendResponse({error: 'Invalid notification options', details: options});
       }
     } else {
-      if (options && options.type && options.iconUrl && options.title && options.message) {
+      if (hasRequiredFields) {
         try {
           chrome.notifications.create('', options);
           sendResponse({shown: true});
@@ -70,7 +85,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           sendResponse({error: 'Notification creation failed', details: e.toString()});
         }
       } else {
-        console.error('Invalid notification options:', options);
+        console.error('Invalid notification options:', options, 'Full message:', message);
         sendResponse({error: 'Invalid notification options', details: options});
       }
     }
