@@ -233,9 +233,8 @@
     function releaseCachedNotifications() {
       const arr = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
       if (!arr || arr.length === 0) return;
-      // clear cache first to avoid duplicates if dispatch triggers any side-effects
+      console.log('Releasing cached notifications:', arr);
       localStorage.removeItem(CACHE_KEY);
-      // dispatch all cached notifications, staggered so each is shown visually
       arr.forEach((item, i) => {
         setTimeout(() => {
           try {
@@ -243,7 +242,7 @@
           } catch (e) {
             console.warn('Failed to dispatch cached notification', e);
           }
-        }, i * 200); // 200ms spacing between notifications
+        }, i * 200);
       });
     }
 
@@ -263,6 +262,10 @@
     document.addEventListener('visibilitychange', () => {
       if (!isRegisteredInstance && isOnFocusSite()) registerInstance();
       if (isRegisteredInstance) updateInstanceVisibility(document.visibilityState === 'visible');
+      // Release cached notifications immediately when leaving this tab
+      if (document.visibilityState === 'hidden') {
+        releaseCachedNotifications();
+      }
     });
     window.addEventListener('beforeunload', () => {
       if (isRegisteredInstance) removeInstance();
@@ -313,7 +316,6 @@
 
     // Start stopwatch on load
     if (Notification.permission === 'default' && isExtensionEnabled()) {
-      // ask permission proactively when extension is enabled
       Notification.requestPermission();
     }
     startStopwatch();

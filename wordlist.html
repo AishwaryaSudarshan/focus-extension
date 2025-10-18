@@ -188,6 +188,10 @@
     document.addEventListener('visibilitychange', () => {
       if (!isRegisteredInstance && isOnFocusSite()) registerInstance();
       if (isRegisteredInstance) updateInstanceVisibility(document.visibilityState === 'visible');
+      // Release cached notifications immediately when leaving this tab
+      if (document.visibilityState === 'hidden') {
+        releaseCachedNotifications();
+      }
     });
     // remove instance on unload
     window.addEventListener('beforeunload', () => {
@@ -201,7 +205,7 @@
         title: 'Test Notification',
         message: 'This is a test.'
       };
-      if (Notification.permission === 'default') {
+      if (Notification.permission === 'default' && isExtensionEnabled()) {
         Notification.requestPermission().then(() => {
           queueOrSendNotification(detail);
         });
