@@ -1,0 +1,69 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Word List</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    ul { font-size: 1.2em; }
+    #controls { margin-bottom: 12px; }
+    #controls > * { margin-right: 8px; vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <h2>Word List - Astronomy</h2>
+
+  <div id="controls">
+    <label><input type="checkbox" id="extension-toggle"> Extension On</label>
+    <button id="test-notif">Send Test Notification</button>
+  </div>
+
+  <ul>
+    <li>SUPERNOVA</li>
+    <li>BLACKHOLE</li>
+    <li>ASTEROID</li>
+    <li>GALAXY</li>
+    <li>NEBULA</li>
+    <li>PLANET</li>
+    <li>GRAVITY</li>
+    <li>QUASAR</li>
+  </ul>
+  <a href="wordsearch2.html">Back to Word Search</a>
+
+  <script>
+    // --- Same shared logic as your original file ---
+    const TOGGLE_KEY = 'focusExtensionEnabled';
+    const CACHE_KEY = 'focusExtensionCachedNotifications';
+    const INSTANCES_KEY = 'focusExtensionInstances';
+    const RELEASE_DELAY = 500;
+    let instanceId = String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+    let releaseTimer = null;
+    let isRegisteredInstance = false;
+    const toggleEl = document.getElementById('extension-toggle');
+    const testBtn = document.getElementById('test-notif');
+    function isExtensionEnabled() { return localStorage.getItem(TOGGLE_KEY) === 'true'; }
+    function setExtensionEnabled(v) { localStorage.setItem(TOGGLE_KEY, v ? 'true' : 'false'); toggleEl.checked = !!v; }
+    toggleEl.checked = isExtensionEnabled();
+    toggleEl.addEventListener('change', () => { setExtensionEnabled(toggleEl.checked); if (toggleEl.checked && Notification.permission === 'default') { Notification.requestPermission(); } });
+    function dispatchAndShow(detail) { window.dispatchEvent(new CustomEvent('notify-extension', { detail })); if (Notification.permission === 'granted') { try { new Notification(detail.title, { body: detail.message, icon: detail.iconUrl }); } catch (e) { console.warn('Notification failed', e); } } }
+    function isOnFocusSite() { return location.pathname.endsWith('wordsearch2.html') || location.pathname.endsWith('wordlist2.html'); }
+    function cacheNotification(detail) { const arr = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]'); arr.push({ detail, ts: Date.now() }); localStorage.setItem(CACHE_KEY, JSON.stringify(arr)); console.log('Notification cached', detail.title); }
+    function readInstances() { try { return JSON.parse(localStorage.getItem(INSTANCES_KEY) || '[]'); } catch (e) { return []; } }
+    function writeInstances(arr) { localStorage.setItem(INSTANCES_KEY, JSON.stringify(arr)); }
+    function anyInstanceVisible(instances) { return (instances || readInstances()).some(i => i.visible); }
+    function registerInstance() { const instances = readInstances().filter(i => i && i.id !== instanceId); instances.push({ id: instanceId, visible: document.visibilityState === 'visible', ts: Date.now() }); writeInstances(instances); isRegisteredInstance = true; if (anyInstanceVisible(instances)) cancelScheduledRelease(); }
+    function updateInstanceVisibility(visible) { const instances = readInstances().filter(Boolean); const idx = instances.findIndex(i => i.id === instanceId); if (idx >= 0) { instances[idx].visible = !!visible; instances[idx].ts = Date.now(); } else { instances.push({ id: instanceId, visible: !!visible, ts: Date.now() }); isRegisteredInstance = true; } writeInstances(instances); if (!anyInstanceVisible(instances)) scheduleReleaseIfNoVisible(); else cancelScheduledRelease(); }
+    function removeInstance() { const instances = readInstances().filter(i => i.id !== instanceId); writeInstances(instances); if (!anyInstanceVisible(instances)) scheduleReleaseIfNoVisible(); }
+    function scheduleReleaseIfNoVisible() { cancelScheduledRelease(); const instances = readInstances(); if (anyInstanceVisible(instances)) return; releaseTimer = setTimeout(() => { const current = readInstances(); if (!anyInstanceVisible(current)) { try { releaseCachedNotifications(); } catch (e) { console.warn(e); } } releaseTimer = null; }, RELEASE_DELAY); }
+    function cancelScheduledRelease() { if (releaseTimer) { clearTimeout(releaseTimer); releaseTimer = null; } }
+    function queueOrSendNotification(detail) { if (!isExtensionEnabled()) { dispatchAndShow(detail); return; } if (isOnFocusSite() && document.visibilityState === 'visible') { cacheNotification(detail); } else { dispatchAndShow(detail); } }
+    function releaseCachedNotifications() { const arr = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]'); if (!arr || arr.length === 0) return; localStorage.removeItem(CACHE_KEY); arr.forEach((item, i) => { setTimeout(() => { try { dispatchAndShow(item.detail); } catch (e) { console.warn('Failed to dispatch cached notification', e); } }, i * 200); }); }
+    window.addEventListener('storage', (ev) => { if (ev.key === INSTANCES_KEY) { const instances = readInstances(); if (anyInstanceVisible(instances)) { cancelScheduledRelease(); } else { scheduleReleaseIfNoVisible(); } } });
+    if (isOnFocusSite()) registerInstance();
+    document.addEventListener('visibilitychange', () => { if (!isRegisteredInstance && isOnFocusSite()) registerInstance(); if (isRegisteredInstance) updateInstanceVisibility(document.visibilityState === 'visible'); if (document.visibilityState === 'hidden') { releaseCachedNotifications(); } });
+    window.addEventListener('beforeunload', () => { if (isRegisteredInstance) removeInstance(); });
+    testBtn.addEventListener('click', () => { const detail = { type: 'basic', iconUrl: 'extension/icon16.png', title: 'Test Notification', message: 'This is a test.' }; if (Notification.permission === 'default' && isExtensionEnabled()) { Notification.requestPermission().then(() => { queueOrSendNotification(detail); }); } else { queueOrSendNotification(detail); } });
+  </script>
+</body>
+</html>
