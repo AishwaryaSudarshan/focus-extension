@@ -38,9 +38,10 @@
 
     #grid {
       display: grid;
-      grid-template-columns: repeat(15, 35px); /* Slightly larger cells */
+      grid-template-columns: repeat(12, 35px); /* Match wordsearch1 */
       gap: 5px; /* Increased gap for better spacing */
       margin-bottom: 20px;
+      user-select: none; /* Prevent text selection during drag */
     }
 
     .cell {
@@ -52,7 +53,6 @@
       font-size: 18px;
       cursor: pointer;
       background: #fff;
-      user-select: none;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -75,22 +75,7 @@
       font-size: 1.1em;
       color: #4caf50; /* Green color for the message */
       text-align: center;
-    }
-
-    #word-list-link {
-      margin-bottom: 15px;
-      display: inline-block;
-      color: #1976d2; /* Darker blue */
-      text-decoration: none;
-      padding: 8px 15px;
-      border: 1px solid #1976d2;
-      border-radius: 5px;
-      transition: background-color 0.3s ease, color 0.3s ease;
-    }
-
-    #word-list-link:hover {
-      background-color: #1976d2;
-      color: white;
+      min-height: 1.2em; /* Prevent layout shift */
     }
 
     #controls {
@@ -100,13 +85,59 @@
       align-items: center;
     }
 
-    #controls > * {
-      vertical-align: middle;
+    /* --- Toggle Switch Styles (from wordsearch1) --- */
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 8px; /* Space between toggle and text */
     }
 
-    #extension-toggle {
-      margin-right: 5px;
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px; 
+      height: 28px; 
     }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 28px; /* Make it rounded */
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%; /* Make it a circle */
+    }
+
+    input:checked + .slider {
+      background-color: #42a5f5; 
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(22px); 
+    }
+    /* --- End of New Toggle Styles --- */
+
 
     button {
       background-color: #42a5f5; /* Blue button */
@@ -121,111 +152,193 @@
     button:hover {
       background-color: #1e88e5; /* Darker blue on hover */
     }
+    
+    /* --- Word List Styles (from wordsearch1) --- */
+    #word-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      list-style: none;
+      padding: 0;
+      margin: 0 0 20px 0; /* Adjusted margin */
+      max-width: 600px; /* Keep it constrained */
+    }
+
+    #word-list li {
+      margin: 5px;
+      padding: 8px 12px;
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      font-size: 0.9em;
+      color: #555;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
+    }
+
+    #word-list li.found {
+      background: #c8e6c9; /* Light green (matches grid) */
+      text-decoration: line-through;
+      color: #777;
+    }
+    /* --- End of New Styles --- */
+
   </style>
 </head>
 <body>
   <h2>Word Search - Astronomy</h2>
   <div id="instructions">Find the words horizontally (left to right) or vertically (top to bottom).</div>
+  
   <div id="controls">
-    <a id="word-list-link" href="wordlist2.html" target="_blank">See Word List</a>
-    <label><input type="checkbox" id="extension-toggle"> Extension On</label>
-    <button id="test-notif">Send Test Notification</button>
+    <div class="toggle-container">
+      <label class="switch">
+        <input type="checkbox" id="extension-toggle">
+        <span class="slider"></span>
+      </label>
+      <span>Extension On</span>
+    </div>
+    <label id="test-notif"></label>
   </div>
+  <ul id="word-list"></ul>
 
   <div id="stopwatch">Time: <span id="timer">00:00</span></div>
   <div id="grid"></div>
   <div id="message"></div>
   <script>
+    // === MODIFIED: New word list ===
     const words = ['SUPERNOVA', 'BLACKHOLE', 'ASTEROID', 'GALAXY', 'NEBULA', 'PLANET', 'GRAVITY', 'QUASAR'];
-    const gridData = [
-      ['F','J','H','N','A','L','P','D','C','V','B','N','M','K','J'],
-      ['S','U','P','E','R','N','O','V','A','E','R','T','Y','U','I'],
-      ['Q','W','A','S','D','F','G','H','J','K','L','M','N','B','V'],
-      ['C','Z','X','C','V','B','N','M','K','J','H','G','F','D','S'],
-      ['A','S','D','F','G','H','J','A','L','U','B','E','N','K','L'],
-      ['P','O','I','U','Y','T','R','L','E','W','Q','A','S','D','F'],
-      ['G','H','J','K','L','M','N','A','G','R','A','V','I','T','Y'],
-      ['X','Z','A','Q','W','S','X','C','Y','V','B','N','M','K','J'],
-      ['C','V','B','N','M','K','J','H','G','F','D','S','A','Q','W'],
-      ['D','S','A','Q','W','E','R','T','Y','U','I','O','P','L','K'],
-      ['J','H','G','F','D','S','A','S','T','E','R','O','I','D','M'],
-      ['N','B','V','C','X','Z','A','Q','W','S','X','C','V','B','N'],
-      ['M','K','J','H','G','F','D','S','A','Q','W','E','R','T','Y'],
-      ['U','I','O','P','L','K','J','H','G','F','D','S','A','Q','W'],
-      ['E','R','T','Y','U','I','O','P','L','K','J','H','G','F','D']
-    ];
+    const gridSize = 12; // Match wordsearch1
 
-    // --- Same game logic as your original file ---
+    // --- Dynamic Grid Generation (from wordsearch1) ---
+    function generateGrid(size, wordList) {
+      let grid = Array(size).fill(null).map(() => Array(size).fill(''));
+      const placedWords = new Set();
+
+      for (const word of wordList) {
+        let placed = false;
+        let attempts = 0;
+        while (!placed && attempts < 100) { 
+          const orientation = Math.random() < 0.5 ? 'horizontal' : 'vertical';
+          const row = Math.floor(Math.random() * size);
+          const col = Math.floor(Math.random() * size);
+
+          let canPlace = true;
+          if (orientation === 'horizontal') {
+            if (col + word.length > size) {
+              canPlace = false;
+            } else {
+              for (let i = 0; i < word.length; i++) {
+                if (grid[row][col + i] !== '') {
+                  canPlace = false;
+                  break;
+                }
+              }
+            }
+            if (canPlace) {
+              for (let i = 0; i < word.length; i++) {
+                grid[row][col + i] = word[i];
+              }
+              placed = true;
+            }
+          } else { // Vertical
+            if (row + word.length > size) {
+              canPlace = false;
+            } else {
+              for (let i = 0; i < word.length; i++) {
+                if (grid[row + i][col] !== '') {
+                  canPlace = false;
+                  break;
+                }
+              }
+            }
+            if (canPlace) {
+              for (let i = 0; i < word.length; i++) {
+                grid[row + i][col] = word[i];
+              }
+              placed = true;
+            }
+          }
+          attempts++;
+        }
+      }
+
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (grid[r][c] === '') {
+            grid[r][c] = String.fromCharCode(65 + Math.floor(Math.random() * 26));
+          }
+        }
+      }
+      return grid;
+    }
+
+    const gridData = generateGrid(gridSize, words);
     const gridDiv = document.getElementById('grid');
+    const wordListEl = document.getElementById('word-list'); 
+    let isSelecting = false;
     let selectedCells = [];
     let foundWords = new Set();
 
-    for (let row = 0; row < gridData.length; row++) {
-      for (let col = 0; col < gridData[row].length; col++) {
+    // --- Grid Population & Interaction Logic (from wordsearch1) ---
+    gridData.forEach((rowData, r) => {
+      rowData.forEach((cellData, c) => {
         const cell = document.createElement('div');
         cell.className = 'cell';
-        cell.textContent = gridData[row][col];
-        cell.dataset.row = row;
-        cell.dataset.col = col;
-        cell.addEventListener('click', () => handleCellClick(cell));
+        cell.textContent = cellData;
+        cell.dataset.row = r;
+        cell.dataset.col = c;
+
+        cell.addEventListener('mousedown', () => startSelection(cell));
+        cell.addEventListener('mouseover', () => continueSelection(cell));
+        
         gridDiv.appendChild(cell);
-      }
+      });
+    });
+
+    gridDiv.addEventListener('mouseup', endSelection);
+    gridDiv.addEventListener('mouseleave', () => {
+        if (isSelecting) {
+            endSelection();
+        }
+    });
+
+    // --- Populate Word List (from wordsearch1) ---
+    words.forEach(word => {
+      const li = document.createElement('li');
+      li.textContent = word;
+      li.id = 'word-' + word; 
+      wordListEl.appendChild(li);
+    });
+    
+    function startSelection(cell) {
+      if (cell.classList.contains('found')) return;
+      isSelecting = true;
+      selectedCells = [cell];
+      cell.classList.add('selected');
     }
 
-    function handleCellClick(cell) {
-      if (cell.classList.contains('found')) return;
-      cell.classList.toggle('selected');
-      if (cell.classList.contains('selected')) {
-        selectedCells.push(cell);
-      } else {
-        selectedCells = selectedCells.filter(c => c !== cell);
-      }
+    function continueSelection(cell) {
+      if (!isSelecting || cell.classList.contains('found') || selectedCells.includes(cell)) return;
+      selectedCells.push(cell);
+      cell.classList.add('selected');
+    }
+
+    function endSelection() {
+      if (!isSelecting) return;
+      isSelecting = false;
       checkSelection();
     }
 
     function checkSelection() {
-      if (selectedCells.length < 2) return;
-
-      const startRow = parseInt(selectedCells[0].dataset.row);
-      const startCol = parseInt(selectedCells[0].dataset.col);
-      const endRow = parseInt(selectedCells[selectedCells.length - 1].dataset.row);
-      const endCol = parseInt(selectedCells[selectedCells.length - 1].dataset.col);
-
-      let valid = false;
-      let selectedWord = '';
-
-      // Check horizontal (left to right)
-      if (startRow === endRow && endCol > startCol) {
-        valid = true;
-        for (let i = 0; i < selectedCells.length; i++) {
-          const cell = selectedCells[i];
-          if (parseInt(cell.dataset.row) !== startRow || parseInt(cell.dataset.col) !== startCol + i) {
-            valid = false;
-            break;
-          }
-          selectedWord += cell.textContent;
-        }
+      if (selectedCells.length < 2) {
+        clearSelection();
+        return;
       }
-
-      // Check vertical (top to bottom)
-      if (startCol === endCol && endRow > startRow) {
-        valid = true;
-        for (let i = 0; i < selectedCells.length; i++) {
-          const cell = selectedCells[i];
-          if (parseInt(cell.dataset.col) !== startCol || parseInt(cell.dataset.row) !== startRow + i) {
-            valid = false;
-            break;
-          }
-          selectedWord += cell.textContent;
-        }
-      }
-
-      if (valid) {
-        if (words.includes(selectedWord)) {
-          markFound(selectedWord);
-        } else {
-          clearSelection();
-        }
+      
+      const selectedWord = selectedCells.map(cell => cell.textContent).join('');
+      
+      if (words.includes(selectedWord) && !foundWords.has(selectedWord)) {
+        markFound(selectedWord);
       } else {
         clearSelection();
       }
@@ -243,13 +356,19 @@
       });
       foundWords.add(word);
       selectedCells = [];
+      
+      const wordLi = document.getElementById('word-' + word);
+      if (wordLi) {
+        wordLi.classList.add('found');
+      }
+
       if (foundWords.size === words.length) {
         document.getElementById('message').textContent = 'Congratulations! You found all the words!';
         stopStopwatch();
       }
     }
-    
-    // --- Same stopwatch and notification logic as your original file ---
+
+    // --- Stopwatch and notification logic ---
     let startTime, timerInterval;
     const notificationTimes = [5, 10, 15, 20, 25, 30, 35, 40, 60];
     let notifiedAt = new Set();
@@ -268,7 +387,10 @@
     toggleEl.addEventListener('change', () => { setExtensionEnabled(toggleEl.checked); if (toggleEl.checked && Notification.permission === 'default') { Notification.requestPermission(); } });
     function dispatchAndShow(detail) { window.dispatchEvent(new CustomEvent('notify-extension', { detail })); if (Notification.permission === 'granted') { try { new Notification(detail.title, { body: detail.message, icon: detail.iconUrl }); } catch (e) { console.warn('Notification failed', e); } } }
     function cacheNotification(detail) { const arr = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]'); arr.push({ detail, ts: Date.now() }); localStorage.setItem(CACHE_KEY, JSON.stringify(arr)); console.log('Notification cached', detail.title); }
+    
+    // === MODIFIED: Check for wordsearch2.html ===
     function isOnFocusSite() { return location.pathname.endsWith('wordsearch2.html') || location.pathname.endsWith('wordlist2.html'); }
+
     function queueOrSendNotification(detail) { if (!isExtensionEnabled()) { dispatchAndShow(detail); return; } if (isOnFocusSite() && document.visibilityState === 'visible') { cacheNotification(detail); } else { dispatchAndShow(detail); } }
     function readInstances() { try { return JSON.parse(localStorage.getItem(INSTANCES_KEY) || '[]'); } catch (e) { return []; } }
     function writeInstances(arr) { localStorage.setItem(INSTANCES_KEY, JSON.stringify(arr)); }
@@ -283,10 +405,14 @@
     if (isOnFocusSite()) registerInstance();
     document.addEventListener('visibilitychange', () => { if (!isRegisteredInstance && isOnFocusSite()) registerInstance(); if (isRegisteredInstance) updateInstanceVisibility(document.visibilityState === 'visible'); if (document.visibilityState === 'hidden') { releaseCachedNotifications(); } });
     window.addEventListener('beforeunload', () => { if (isRegisteredInstance) removeInstance(); });
-    testBtn.addEventListener('click', () => { const detail = { type: 'basic', iconUrl: 'extension/icon16.png', title: 'Test Notification', message: 'This is a test.' }; if (Notification.permission === 'default') { Notification.requestPermission().then(() => { queueOrSendNotification(detail); }); } else { queueOrSendNotification(detail); } });
+    
+    // Note: testBtn event listener will do nothing since the button doesn't exist, which is fine.
+    // testBtn.addEventListener('click', () => { ... }); 
+
     function startStopwatch() { startTime = Date.now(); timerInterval = setInterval(() => { const elapsed = Math.floor((Date.now() - startTime) / 1000); const min = String(Math.floor(elapsed / 60)).padStart(2, '0'); const sec = String(elapsed % 60).padStart(2, '0'); document.getElementById('timer').textContent = `${min}:${sec}`; if (notificationTimes.includes(elapsed) && !notifiedAt.has(elapsed)) { notifiedAt.add(elapsed); const detail = { type: 'basic', iconUrl: 'extension/icon16.png', title: 'Scheduled Notification', message: `This is a simulated notification at ${elapsed} seconds.` }; queueOrSendNotification(detail); } }, 1000); }
     function stopStopwatch() { clearInterval(timerInterval); }
     if (Notification.permission === 'default' && isExtensionEnabled()) { Notification.requestPermission(); }
     startStopwatch();
   </script>
 </body>
+</html>
