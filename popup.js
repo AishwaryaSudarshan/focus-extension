@@ -88,20 +88,28 @@ addSiteBtn.onclick = () => {
 };
 
 document.getElementById('testNotify').addEventListener('click', () => {
-  chrome.runtime.sendMessage({
-    type: 'show_notification',
-    options: {
-      type: 'basic',
-      iconUrl: 'extension/icon16.png',
-      title: 'Test Notification',
-      message: 'This is a simulated test notification.'
-    }
-  }, response => {
-    // if (response.shown) {
-    //   alert('Notification shown immediately.');
-    // }
-  });
+  // Request permission if needed
+  if (Notification.permission === 'default') {
+    Notification.requestPermission().then(permission => {
+      if (permission === 'granted') {
+        showTestNotification();
+      } else {
+        alert('Notification permission denied.');
+      }
+    });
+  } else if (Notification.permission === 'granted') {
+    showTestNotification();
+  } else {
+    alert('Notification permission denied.');
+  }
 });
+
+function showTestNotification() {
+  new Notification('Test Notification', {
+    body: 'This is a simulated test notification.',
+    icon: 'extension/icon16.png'
+  });
+}
 
 // Initialize toggle button state
 chrome.storage.sync.get(['focusMode'], result => {

@@ -1,24 +1,29 @@
 {
   "manifest_version": 3,
-  "name": "Focus Mode Extension",
+  "name": "Focus Extension",
   "version": "1.0",
-  "description": "Hold notifications while on focus sites and release them as a summary.",
-  "permissions": [
-    "storage",
-    "notifications",
-    "tabs",
-    "activeTab"
-  ],
+  "description": "Word search and notification test extension.",
+  "permissions": ["storage", "notifications", "scripting"],
   "background": {
     "service_worker": "background.js"
   },
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "extension/icon16.png"
+  "content_scripts": [
+    {
+      "matches": ["http://localhost/*"],
+      "js": ["contentScript.js"]
     }
+  ],
+  "host_permissions": ["http://localhost/*"],
+  "action": {
+    "default_popup": "popup.html"
   },
   "icons": {
     "16": "extension/icon16.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["extension/icon16.png"],
+      "matches": ["http://localhost/*"]
+    }
+  ]
 }
