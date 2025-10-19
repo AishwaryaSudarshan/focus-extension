@@ -56,13 +56,23 @@ function renderSites(sites) {
   siteList.innerHTML = '';
   sites.forEach((site, idx) => {
     const li = document.createElement('li');
-    li.textContent = site;
+    
+    // Create a separate element for the text to sit next to the button
+    const siteText = document.createElement('span');
+    siteText.textContent = site;
+    
+    // Create and style the 'X' remove button
     const removeBtn = document.createElement('button');
-    removeBtn.textContent = 'Remove';
-    removeBtn.onclick = () => {
+    removeBtn.textContent = 'X';
+    removeBtn.classList.add('remove-site-btn'); // Apply the class from your CSS
+    
+    removeBtn.onclick = (event) => {
+      event.stopPropagation(); // Prevents other click events from firing
       sites.splice(idx, 1);
       chrome.storage.sync.set({ focusZones: sites }, () => renderSites(sites));
     };
+    
+    li.appendChild(siteText);
     li.appendChild(removeBtn);
     siteList.appendChild(li);
   });
