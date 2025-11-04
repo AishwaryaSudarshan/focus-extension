@@ -3,7 +3,7 @@
   "name": "Focus Extension",
   "version": "1.0",
   "description": "Word search and notification test extension.",
-  "permissions": ["storage", "notifications", "scripting"],
+  "permissions": ["storage", "notifications", "scripting", "tabs", "activeTab"],
   "background": {
     "service_worker": "background.js"
   },

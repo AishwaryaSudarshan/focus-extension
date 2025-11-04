@@ -9,6 +9,19 @@ function isFocusZone(url, zones) {
   return zones.some(site => url && url.includes(site));
 }
 
+// Initialize isOnFocusTab on startup
+function initOnStartup() {
+  chrome.storage.sync.get(['focusZones'], result => {
+    const zones = Array.isArray(result.focusZones) ? result.focusZones : [];
+    chrome.tabs.query({ active: true, lastFocusedWindow: true }, tabs => {
+      const url = tabs[0]?.url;
+      isOnFocusTab = isFocusZone(url, zones);
+      updateBadge();
+    });
+  });
+}
+initOnStartup();
+
 // Listen for tab changes
 function handleTabChangeWithZones(url) {
   chrome.storage.sync.get(['focusZones'], result => {
@@ -39,14 +52,36 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Intercept notification creation
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'show_notification') {
-    if (isOnFocusTab) {
-      // Cache notification if on focus tab
-      cachedNotifications.push(message.options);
-      updateBadge();
-    } else {
-      // Show notification immediately if not on focus tab
-      chrome.notifications.create('', message.options);
-    }
+    // Read focusMode and focusZones at the time of the message
+    chrome.storage.sync.get(['focusMode', 'focusZones'], result => {
+      const focusModeOn = result.focusMode === true;
+      const zones = Array.isArray(result.focusZones) ? result.focusZones : [];
+
+      function decideForUrl(url) {
+        const fromFocusZone = isFocusZone(url, zones);
+        if (focusModeOn && fromFocusZone) {
+          // Cache notification if focus mode ON and originating from a focus zone
+          cachedNotifications.push(message.options);
+          updateBadge();
+        } else {
+          // Show notification immediately otherwise
+          chrome.notifications.create('', message.options);
+        }
+      }
+
+      // Prefer sender.tab.url (message origin). If not present (popup or background), query active tab.
+      if (sender && sender.tab && sender.tab.url) {
+        decideForUrl(sender.tab.url);
+      } else {
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, tabs => {
+          const url = tabs[0]?.url;
+          decideForUrl(url);
+        });
+      }
+    });
+
+    // No sendResponse expected
+    return false;
   }
 });
 

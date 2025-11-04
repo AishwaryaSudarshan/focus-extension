@@ -98,20 +98,16 @@ addSiteBtn.onclick = () => {
 };
 
 document.getElementById('testNotify').addEventListener('click', () => {
-  // Request permission if needed
-  if (Notification.permission === 'default') {
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') {
-        showTestNotification();
-      } else {
-        alert('Notification permission denied.');
-      }
-    });
-  } else if (Notification.permission === 'granted') {
-    showTestNotification();
-  } else {
-    alert('Notification permission denied.');
-  }
+  // This should send a message to the background script, not create a notification directly.
+  chrome.runtime.sendMessage({
+    type: 'show_notification',
+    options: {
+      type: 'basic',
+      iconUrl: 'extension/icon16.png',
+      title: 'Test Notification',
+      message: 'This is a simulated test notification from the popup.'
+    }
+  });
 });
 
 function showTestNotification() {
